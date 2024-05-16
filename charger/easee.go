@@ -781,7 +781,7 @@ func (c *Easee) Phases1p3p(phases int) error {
 		if c.equalizer {
 			if c.lp.GetMode() == api.ModePV { //only nessasary if loadpoint is in PV mode due to phase changning
 				c.lp.SetMode(api.ModeOff)
-				time.Sleep(5 * time.Second)
+				time.Sleep(1 * time.Second)
 				c.lp.SetMode(api.ModePV)
 				c.log.DEBUG.Printf("Loadpoint stoped and started after 3 phase change")
 
