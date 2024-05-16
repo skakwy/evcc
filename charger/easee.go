@@ -777,16 +777,16 @@ func (c *Easee) Phases1p3p(phases int) error {
 			data.DynamicCircuitCurrentP2 = &max2
 			data.DynamicCircuitCurrentP3 = &max3
 		}
+
 		//disable charge before changing phases - easee fix - https://github.com/evcc-io/evcc/issues/13839
 		if c.equalizer {
-			if c.lp.GetMode() == api.ModePV { //only nessasary if loadpoint is in PV mode due to phase changning
-				c.lp.SetMode(api.ModeOff)
-				time.Sleep(1 * time.Second)
-				c.lp.SetMode(api.ModePV)
-				c.log.DEBUG.Printf("Loadpoint stoped and started after 3 phase change")
-
-			} else {
-				c.log.DEBUG.Println("Loadpoint not in PV mode, no need to stop and start")
+			//only nessasary if loadpoint is in PV mode due to phase changning
+			if c.lp.GetMode() == api.ModePV {
+				c.Enable(false)
+				c.waitForChargerEnabledState(false)
+				c.Enable(true)
+				c.waitForChargerEnabledState(true)
+				c.log.DEBUG.Printf("Loadpoint stoped and started after phase change")
 			}
 		}
 
@@ -812,6 +812,7 @@ func (c *Easee) Phases1p3p(phases int) error {
 
 			// disable charger to activate changed settings (loadpoint will reenable it)
 			err = c.Enable(false)
+
 		}
 	}
 
