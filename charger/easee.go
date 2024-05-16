@@ -55,6 +55,7 @@ type Easee struct {
 	chargerEnabled          bool
 	smartCharging           bool
 	authorize               bool
+	equalizer               bool
 	enabled                 bool
 	opMode                  int
 	pilotMode               string
@@ -85,6 +86,7 @@ func NewEaseeFromConfig(other map[string]interface{}) (api.Charger, error) {
 		Charger   string
 		Timeout   time.Duration
 		Authorize bool
+		Equalizer bool //new
 	}{
 		Timeout: request.Timeout,
 	}
@@ -97,11 +99,11 @@ func NewEaseeFromConfig(other map[string]interface{}) (api.Charger, error) {
 		return nil, api.ErrMissingCredentials
 	}
 
-	return NewEasee(cc.User, cc.Password, cc.Charger, cc.Timeout, cc.Authorize)
+	return NewEasee(cc.User, cc.Password, cc.Charger, cc.Timeout, cc.Authorize, cc.Equalizer) //new
 }
 
 // NewEasee creates Easee charger
-func NewEasee(user, password, charger string, timeout time.Duration, authorize bool) (*Easee, error) {
+func NewEasee(user, password, charger string, timeout time.Duration, authorize bool, equalizer bool) (*Easee, error) { //new
 	log := util.NewLogger("easee").Redact(user, password)
 
 	if !sponsor.IsAuthorized() {
@@ -114,6 +116,7 @@ func NewEasee(user, password, charger string, timeout time.Duration, authorize b
 		Helper:    request.NewHelper(log),
 		charger:   charger,
 		authorize: authorize,
+		equalizer: equalizer, //new
 		log:       log,
 		current:   6, // default current
 		startDone: sync.OnceFunc(func() { close(done) }),
@@ -746,6 +749,7 @@ var _ api.PhaseSwitcher = (*Easee)(nil)
 func (c *Easee) Phases1p3p(phases int) error {
 	var err error
 	if c.circuit != 0 {
+
 		// circuit level
 		uri := fmt.Sprintf("%s/sites/%d/circuits/%d/settings", easee.API, c.site, c.circuit)
 
@@ -773,6 +777,18 @@ func (c *Easee) Phases1p3p(phases int) error {
 			data.DynamicCircuitCurrentP2 = &max2
 			data.DynamicCircuitCurrentP3 = &max3
 		}
+		//disable charge before changing phases - easee fix - https://github.com/evcc-io/evcc/issues/13839
+		if c.equalizer {
+			if c.lp.GetMode() == api.ModePV { //only nessasary if loadpoint is in PV mode due to phase changning
+				c.lp.SetMode(api.ModeOff)
+				time.Sleep(5 * time.Second)
+				c.lp.SetMode(api.ModePV)
+				c.log.DEBUG.Printf("Loadpoint stoped and started after 3 phase change")
+
+			} else {
+				c.log.DEBUG.Println("Loadpoint not in PV mode, no need to stop and start")
+			}
+		}
 
 		_, err = c.postJSONAndWait(uri, data)
 	} else {
@@ -783,6 +799,7 @@ func (c *Easee) Phases1p3p(phases int) error {
 
 		// change phaseMode only if necessary
 		if phases != c.phaseMode {
+
 			data := easee.ChargerSettings{
 				PhaseMode: &phases,
 			}

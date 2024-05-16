@@ -27,6 +27,13 @@ params:
     help:
       de: Steuert ob evcc die Authentifizierung am Charger vornimmt. Vorteil ist ein kontrollierter Ladestart. Nicht kompatibel mit RFID Identifikation von Fahrzeugen.
       en: Controls wether evcc shall perform authentication against charger. Benefit is a contolled start of charging. Not compatible with RFID identification of vehicles.
+  - name: equalizer
+    type: bool
+    default: false
+    help:
+      de: Wenn man ein easee Equalizer benutzt
+      en: If you use an easee Equalizer
+   
 render: |
   type: easee
   user: {{ .user }}
@@ -34,3 +41,4 @@ render: |
   charger: {{ .charger }}
   timeout: {{ .timeout }}
   authorize: {{ .authorize }}
+  Equalizer: {{ .equalizer }}
